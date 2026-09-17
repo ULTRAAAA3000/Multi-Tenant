@@ -1,0 +1,49 @@
+name = "multi-tenant-saas"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ------------------------------------------------------------------
+# D1 Database binding
+# ID проставляется после `wrangler d1 create multi-tenant-db`
+# ------------------------------------------------------------------
+[[d1_databases]]
+binding = "DB"
+database_name = "multi-tenant-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# ------------------------------------------------------------------
+# R2 bucket binding для медиа (фото товаров, логотипы)
+# ------------------------------------------------------------------
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "multi-tenant-media"
+
+# ------------------------------------------------------------------
+# Переменные окружения (несекретные)
+# ------------------------------------------------------------------
+[vars]
+APP_ENV = "production"
+BASE_DOMAIN = "yourdomain.com" # заменить на реальный домен платформы
+
+# ------------------------------------------------------------------
+# Секреты (НЕ хранятся здесь, задаются через `wrangler secret put`):
+#   TELEGRAM_BOT_TOKEN_ENCRYPTION_KEY
+#   STRIPE_SECRET_KEY
+#   PADDLE_API_KEY
+#   MONOPAY_TOKEN
+#   JWT_SECRET
+# ------------------------------------------------------------------
+
+[env.staging]
+name = "multi-tenant-saas-staging"
+vars = { APP_ENV = "staging", BASE_DOMAIN = "staging.yourdomain.com" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "multi-tenant-db-staging"
+database_id = "REPLACE_WITH_STAGING_D1_DATABASE_ID"
+
+[[env.staging.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "multi-tenant-media-staging"

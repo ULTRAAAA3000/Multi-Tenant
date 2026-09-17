@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "multi-tenant-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "b2c5fcc4-b898-4565-a783-c827c56adf66"
 
 # ------------------------------------------------------------------
 # R2 bucket binding для медиа (фото товаров, логотипы)

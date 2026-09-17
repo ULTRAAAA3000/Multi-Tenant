@@ -57,13 +57,13 @@ export interface Order {
 }
 
 export interface CreateProductInput {
-  categoryId?: string | null;
+  categoryId?: string | null | undefined;
   name: string;
-  description?: string | null;
+  description?: string | null | undefined;
   priceCents: number;
-  imageUrl?: string | null;
-  isAvailable?: boolean;
-  sortOrder?: number;
+  imageUrl?: string | null | undefined;
+  isAvailable?: boolean | undefined;
+  sortOrder?: number | undefined;
 }
 
 export interface CreateOrderInput {

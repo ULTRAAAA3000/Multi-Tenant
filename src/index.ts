@@ -7,6 +7,7 @@ import productsRoutes from "./routes/products";
 import ordersRoutes from "./routes/orders";
 import settingsRoutes from "./routes/settings";
 import mediaRoutes from "./routes/media";
+import tenantInfoRoutes from "./routes/tenant-info";
 import paymentsRoutes from "./payments/routes";
 import authRoutes from "./auth/routes";
 import adminTenantsRoutes from "./admin/tenants";
@@ -80,6 +81,7 @@ api.route("/products", productsRoutes);
 api.route("/orders", ordersRoutes);
 api.route("/settings", settingsRoutes);
 api.route("/media", mediaRoutes);
+api.route("/tenant", tenantInfoRoutes);
 
 app.route("/api", api);
 

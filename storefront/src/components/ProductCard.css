@@ -1,0 +1,186 @@
+.product-card {
+  position: relative;
+  background: var(--background);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 250ms ease-out, box-shadow 250ms ease-out;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-floating);
+}
+
+.product-card.unavailable {
+  opacity: 0.6;
+}
+
+.product-image-slot {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--muted);
+  box-shadow: var(--shadow-recessed);
+  margin: 10px 10px 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.product-image-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.unavailable-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #2d3436;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.product-info {
+  padding: 14px 14px 0;
+  flex: 1;
+}
+
+.product-info h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.product-desc {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 14px;
+}
+
+.product-price {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.add-btn {
+  border: none;
+  cursor: pointer;
+  background: var(--background);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 9px 16px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+  min-height: 36px;
+  transition: all 150ms var(--ease-mech);
+}
+
+.add-btn:hover {
+  color: var(--accent);
+}
+
+.add-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-pressed);
+}
+
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--background);
+  box-shadow: var(--shadow-recessed);
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.qty-stepper button {
+  border: none;
+  cursor: pointer;
+  background: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-stepper button:active {
+  box-shadow: var(--shadow-pressed);
+}
+
+.qty-stepper span {
+  min-width: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Skeleton loading state */
+.skeleton-block {
+  background: linear-gradient(90deg, var(--muted) 25%, var(--border-shadow) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  margin-top: 8px;
+  background: linear-gradient(90deg, var(--muted) 25%, var(--border-shadow) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton-line:first-child {
+  margin-top: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

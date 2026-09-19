@@ -9,12 +9,13 @@ import { StateMessage } from "../components/StateMessage";
 import { BrandingFooter } from "../components/BrandingFooter";
 import { useCart } from "../lib/cart";
 import { api, ApiRequestError } from "../lib/api";
-import type { Category, Product } from "../lib/types";
+import type { Category, Product, TenantInfo } from "../lib/types";
 import "./Storefront.css";
 
 type DrawerView = "cart" | "checkout" | "confirmation";
 
 export function Storefront() {
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -31,10 +32,12 @@ export function Storefront() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [categoriesData, productsData] = await Promise.all([
+      const [tenantData, categoriesData, productsData] = await Promise.all([
+        api.getTenantInfo(),
         api.getCategories(),
         api.getProducts({ onlyAvailable: false }),
       ]);
+      setTenantInfo(tenantData);
       setCategories(categoriesData);
       setProducts(productsData);
     } catch (err) {
@@ -75,8 +78,8 @@ export function Storefront() {
   };
 
   return (
-    <div className="storefront">
-      <Header tenantName="Storefront" onCartClick={openCart} />
+    <div className="storefront" style={tenantInfo ? ({ "--accent": tenantInfo.themeColor } as React.CSSProperties) : undefined}>
+      <Header tenantName={tenantInfo?.name ?? "Menu"} onCartClick={openCart} />
 
       <main className="storefront-main">
         {categories.length > 0 && (
@@ -124,7 +127,7 @@ export function Storefront() {
         )}
       </main>
 
-      <BrandingFooter showBranding={true} />
+      <BrandingFooter showBranding={tenantInfo?.showBranding ?? true} />
 
       {itemCount > 0 && !isDrawerOpen && (
         <button className="mobile-cart-bar" onClick={openCart}>

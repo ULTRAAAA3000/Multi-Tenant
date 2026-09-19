@@ -3,7 +3,32 @@
 Edge-native multi-tenant SaaS на Cloudflare Workers + D1 + R2.
 Мобильные витрины/меню для заведений и шопов с заказом через Telegram.
 
-## Статус: Фаза 2 — Backend Core & Multi-Tenant Routing ✅
+## Статус: Фаза 3 — Telegram Bot, R2 Storage & Payment Abstraction ✅
+
+### Фаза 3 — Telegram Bot, R2 Storage & Payment Abstraction ✅
+- **`src/services/media.service.ts` + `src/routes/media.ts`** — загрузка
+  изображений товаров напрямую в R2 через Worker (`POST /api/media/upload`,
+  multipart/form-data). Ключи объектов префиксуются `tenants/{tenant_id}/`
+  для логической изоляции; удаление проверяет владение tenant перед delete.
+  Лимит 8MB, разрешены JPEG/PNG/WEBP/GIF.
+- **`src/services/telegram.service.ts`** — форматирует и отправляет заказ
+  в Telegram-чат владельца через Bot API (`sendMessage`, MarkdownV2).
+  Отправка "best effort": сбой доставки не откатывает уже созданный заказ.
+- **`src/utils/crypto.ts`** — AES-GCM шифрование `telegram_bot_token`
+  перед записью в D1 (D1 не шифрует столбцы на уровне БД). Расшифровка
+  происходит только непосредственно перед вызовом Telegram API.
+- **`src/payments/`** — Payment Abstraction Layer:
+  - `provider.interface.ts` — общий контракт `PaymentProviderAdapter`
+    (`createPaymentIntent`, `verifyWebhook`)
+  - `stripe.adapter.ts` — Stripe Checkout Sessions + ручная верификация
+    webhook-подписи (HMAC-SHA256 через Web Crypto, без stripe-node SDK)
+  - `monopay.adapter.ts` — Monobank Acquiring API (invoice/create)
+  - `factory.ts` — выбор адаптера по имени провайдера
+  - `routes.ts` — `POST /payments/checkout` (создание сессии оплаты,
+    защищено `enforceOnlinePaymentsAllowed`) и
+    `POST /payments/webhook/:provider` (вне tenantResolver — провайдеры
+    не знают о нашей поддоменной схеме; tenant резолвится по `order_id`
+    из верифицированного события)
 
 ### Фаза 1 — Архитектура БД & Модель подписок ✅
 - Схема D1 (`migrations/0001_core_tenancy.sql`): `tenants`, `subscriptions`,
@@ -71,6 +96,18 @@ npx wrangler secret put MONOPAY_TOKEN
 
 ## Следующая фаза
 
-**Фаза 3**: Интеграция с Telegram Bot, R2 Storage & Payment Gateway
-Abstraction — загрузка изображений товаров в R2, push-уведомления о
-заказах в Telegram владельца, абстрактный слой для Stripe/Monopay.
+**Фаза 4**: Клиентский Frontend (Mobile-First Showcase/Menu) — React/Vite
+витрина для покупателей, "Powered by" футер для free-тарифа, форма
+оформления заказа с интеграцией checkout из Фазы 3.
+
+## Переменные окружения, нужные для Фазы 3
+
+```bash
+npx wrangler secret put TELEGRAM_BOT_TOKEN_ENCRYPTION_KEY  # любая случайная строка 32+ символов
+npx wrangler secret put STRIPE_SECRET_KEY                   # опционально, если используете Stripe
+npx wrangler secret put MONOPAY_TOKEN                        # опционально, если используете Monobank
+```
+
+Подключение Telegram-бота для tenant делается через `PATCH` на tenant-admin
+эндпоинт (появится в Фазе 5) с полями `telegramBotToken` (сырой токен —
+шифруется автоматически перед сохранением) и `telegramChatId`.

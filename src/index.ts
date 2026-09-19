@@ -6,6 +6,8 @@ import categoriesRoutes from "./routes/categories";
 import productsRoutes from "./routes/products";
 import ordersRoutes from "./routes/orders";
 import settingsRoutes from "./routes/settings";
+import mediaRoutes from "./routes/media";
+import paymentsRoutes from "./payments/routes";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -37,10 +39,20 @@ app.get("/health", (c) => {
 });
 
 /**
- * Все API-роуты каталога/заказов идут через tenantResolver:
- * он определяет tenant_id по Host-заголовку (поддомен или custom
- * domain), проверяет активность tenant и допустимость custom domain
- * по тарифу, и кладёт результат в контекст для нижестоящих хендлеров.
+ * Платёжные webhooks регистрируются ОТДЕЛЬНО от /api группы,
+ * т.к. провайдеры (Stripe/Monopay) не присылают наш Host-заголовок
+ * в ожидаемом формате поддомена — tenantResolver здесь неприменим.
+ * Tenant для webhook определяется изнутри payments/routes.ts по
+ * orderId, найденному в теле верифицированного события.
+ */
+app.route("/payments", paymentsRoutes);
+
+/**
+ * Все остальные API-роуты каталога/заказов/медиа идут через
+ * tenantResolver: он определяет tenant_id по Host-заголовку
+ * (поддомен или custom domain), проверяет активность tenant и
+ * допустимость custom domain по тарифу, и кладёт результат в
+ * контекст для нижестоящих хендлеров.
  */
 const api = new Hono<{ Bindings: Env }>();
 api.use("*", tenantResolver());
@@ -48,6 +60,7 @@ api.route("/categories", categoriesRoutes);
 api.route("/products", productsRoutes);
 api.route("/orders", ordersRoutes);
 api.route("/settings", settingsRoutes);
+api.route("/media", mediaRoutes);
 
 app.route("/api", api);
 

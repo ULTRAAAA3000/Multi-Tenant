@@ -38,9 +38,9 @@ export function enforceProductLimit() {
 export function enforceTenantLimit() {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     // На этом шаге ownerId берём не из tenant-контекста (его еще нет,
-    // мы создаём НОВЫЙ tenant), а из авторизованного пользователя.
-    // Ожидается, что auth middleware (Фаза 5) положит его в c.get("ownerId").
-    const ownerId = c.get("ownerId" as never) as string | undefined;
+    // мы создаём НОВЫЙ tenant), а из авторизованного пользователя,
+    // положенного в контекст requireAuth middleware (src/auth/middleware.ts).
+    const ownerId = c.get("ownerId");
     if (!ownerId) {
       return errorResponse(c, Errors.unauthorized());
     }

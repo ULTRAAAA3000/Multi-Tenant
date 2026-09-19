@@ -3,8 +3,11 @@ import type { Env } from "../types/env";
 import { requireTenant } from "../middleware/tenant-resolver";
 import { OrdersRepository } from "../db/orders.repository";
 import { ProductsRepository } from "../db/products.repository";
+import { TenantsRepository } from "../db/tenants.repository";
 import { generateId, ApiError, errorResponse, Errors } from "../utils/api";
 import { requireString, optionalString } from "../utils/validation";
+import { decryptSecret } from "../utils/crypto";
+import { sendOrderNotification } from "../services/telegram.service";
 import type { OrderStatus } from "../types/catalog";
 
 const orders = new Hono<{ Bindings: Env }>();
@@ -95,9 +98,32 @@ orders.post("/", async (c) => {
       resolvedItems
     );
 
-    // Уведомление в Telegram-бот владельца отправляется в Фазе 3
-    // (интеграция с Telegram Bot API), не здесь — здесь только
-    // персистентность заказа.
+    // Уведомление в Telegram отправляется "best effort": сбой доставки
+    // не должен откатывать уже сохранённый заказ. Токен бота хранится
+    // в БД зашифрованным (AES-GCM) и расшифровывается только здесь,
+    // в момент фактической отправки.
+    const tenantsRepo = new TenantsRepository(c.env.DB);
+    const tenantRecord = await tenantsRepo.findById(tenant.tenantId);
+
+    if (tenantRecord?.telegramBotToken && tenantRecord.telegramChatId) {
+      try {
+        const decryptedToken = await decryptSecret(
+          tenantRecord.telegramBotToken,
+          c.env.TELEGRAM_BOT_TOKEN_ENCRYPTION_KEY
+        );
+        await sendOrderNotification(
+          {
+            telegramBotToken: decryptedToken,
+            telegramChatId: tenantRecord.telegramChatId,
+            currency: tenantRecord.currency,
+          },
+          created
+        );
+      } catch (notifyErr) {
+        // Логируем, но не проваливаем запрос — заказ уже создан.
+        console.error("Failed to send Telegram notification:", notifyErr);
+      }
+    }
 
     return c.json({ data: created }, 201);
   } catch (err) {

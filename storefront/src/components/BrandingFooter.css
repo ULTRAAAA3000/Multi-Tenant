@@ -1,0 +1,26 @@
+.branding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  margin: 24px auto 0;
+  max-width: 40rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.branding-footer:hover {
+  color: var(--accent);
+}
+
+.branding-footer strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.branding-footer:hover strong {
+  color: var(--accent);
+}

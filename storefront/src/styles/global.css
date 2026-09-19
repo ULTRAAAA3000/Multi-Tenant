@@ -1,0 +1,63 @@
+:root {
+  --background: #e0e5ec;
+  --foreground: #f0f2f5;
+  --muted: #d1d9e6;
+  --text: #2d3436;
+  --text-muted: #4a5568;
+  --accent: #ff4757;
+  --accent-foreground: #ffffff;
+  --border-shadow: #babecc;
+  --border-light: #ffffff;
+  --border-dark: #a3b1c6;
+
+  --shadow-card: 8px 8px 16px var(--border-shadow), -8px -8px 16px var(--border-light);
+  --shadow-floating: 12px 12px 24px var(--border-shadow), -12px -12px 24px var(--border-light),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-pressed: inset 6px 6px 12px var(--border-shadow), inset -6px -6px 12px var(--border-light);
+  --shadow-recessed: inset 4px 4px 8px var(--border-shadow), inset -4px -4px 8px var(--border-light);
+  --shadow-glow: 0 0 10px 2px rgba(255, 71, 87, 0.6);
+
+  --ease-mech: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: "Inter", -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(255, 71, 87, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

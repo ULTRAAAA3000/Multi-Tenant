@@ -144,3 +144,67 @@ npm run build      # dist/ — статические файлы для Cloudfla
 
 Деплой: отдельный Cloudflare Pages проект, build output directory `storefront/dist`,
 build command `npm run build`, root directory `storefront`.
+
+## Фаза 5 — Админ-панель (API) & Billing Module ✅
+
+Весь бэкенд для дашборда владельца. UI дашборда не входит в эту фазу
+(план описывал только "веб-кабинет" концептуально) — это готовый API,
+на который можно посадить фронтенд аналогично `storefront/`.
+
+### Новая миграция
+
+```bash
+npx wrangler d1 migrations apply multi-tenant-db --remote
+```
+
+Добавляет таблицу `users` (`migrations/0002_users.sql`) — владельцы
+аккаунтов, которых раньше не было: `owner_id` использовался в
+`tenants`/`subscriptions` с Фазы 1, но некого было авторизовывать.
+
+### Новый секрет
+
+```bash
+npx wrangler secret put JWT_SECRET   # любая случайная строка 32+ символов
+```
+
+### Аутентификация (`src/auth/`)
+- `POST /auth/register` — создание аккаунта, возвращает JWT
+- `POST /auth/login` — вход, возвращает JWT
+- Пароли хэшируются PBKDF2 100 000 итераций (Web Crypto API — bcrypt/argon2
+  несовместимы с Workers runtime без полифиллов)
+- Сессии — самописный JWT (HS256, без внешних зависимостей), 30 дней,
+  передаётся как `Authorization: Bearer <token>`
+- Одинаковое сообщение об ошибке для "нет email" и "неверный пароль"
+  (защита от user enumeration)
+
+### Admin API — заведения (`src/admin/tenants.ts`)
+Защищено `requireAuth` (JWT), scoped по `ownerId`, НЕ через tenantResolver
+(владелец управляет несколькими tenants, не находится "внутри" одного):
+- `GET /admin/tenants` — список своих заведений
+- `POST /admin/tenants` — создание нового (проверяет `enforceTenantLimit`)
+- `PATCH /admin/tenants/:id` — обновление (логотип, цвет, Telegram-бот —
+  `telegramBotToken` шифруется на этом уровне перед сохранением)
+- `PATCH /admin/tenants/:id/domain` — привязка custom domain
+  (защищено проверкой `customDomainAllowed` по тарифу)
+
+### Billing Module (`src/admin/billing.ts`)
+- `GET /admin/billing` — текущий тариф + фактическое использование
+  (`N / max` заведений, товаров — данные для "плашек с лимитами")
+- `GET /admin/billing/plans` — все тарифы с лимитами (для страницы выбора плана)
+- `POST /admin/billing/change-plan` — смена тарифа; блокирует даунгрейд,
+  если он тут же нарушит текущие данные (например, 3 заведения на Free)
+
+**Важно**: `change-plan` меняет план напрямую, без реального биллинг-цикла.
+Полная интеграция Stripe Subscriptions/Billing Portal (recurring charges,
+Stripe Customer Portal, обработка неудачных платежей) требует настройки
+конкретных Price ID в Stripe Dashboard — это внешняя конфигурация
+аккаунта, а не код, и является следующим шагом перед реальным запуском
+платных тарифов.
+
+## Проект завершён по всем 5 фазам плана
+
+Что не входило в исходный план и стоит держать в голове перед продакшеном:
+- Полная ECDSA-верификация Monopay webhook (сейчас упрощена, см. комментарий в `src/payments/monopay.adapter.ts`)
+- Реальная Stripe Subscriptions интеграция для `change-plan` (см. выше)
+- UI дашборда владельца (Фаза 5 дала только API)
+- Rate limiting на `/auth/login` (защита от брутфорса)

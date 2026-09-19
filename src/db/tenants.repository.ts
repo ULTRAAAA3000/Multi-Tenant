@@ -97,6 +97,15 @@ export class TenantsRepository {
     return created;
   }
 
+  /**
+   * ВАЖНО: input.telegramBotToken должен быть уже зашифрован
+   * (см. src/utils/crypto.ts, encryptSecret) вызывающим кодом
+   * ПЕРЕД передачей сюда. Репозиторий сохраняет то, что получил,
+   * без дополнительной обработки — шифрование/расшифровка это
+   * ответственность roуte-слоя (см. src/routes/orders.ts, где
+   * токен расшифровывается непосредственно перед отправкой в
+   * Telegram API).
+   */
   async update(id: string, input: UpdateTenantInput): Promise<Tenant> {
     const fields: string[] = [];
     const values: unknown[] = [];

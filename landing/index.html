@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kiosk — Telegram storefronts for shops and restaurants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #e0e5ec;
+    --foreground: #f0f2f5;
+    --muted: #d1d9e6;
+    --text: #2d3436;
+    --text-muted: #4a5568;
+    --accent: #ff4757;
+    --accent-foreground: #ffffff;
+    --border-shadow: #babecc;
+    --border-light: #ffffff;
+    --border-dark: #a3b1c6;
+
+    --shadow-card: 8px 8px 16px var(--border-shadow), -8px -8px 16px var(--border-light);
+    --shadow-floating: 12px 12px 24px var(--border-shadow), -12px -12px 24px var(--border-light), inset 1px 1px 0 rgba(255,255,255,0.5);
+    --shadow-pressed: inset 6px 6px 12px var(--border-shadow), inset -6px -6px 12px var(--border-light);
+    --shadow-recessed: inset 4px 4px 8px var(--border-shadow), inset -4px -4px 8px var(--border-light);
+    --shadow-sharp: 4px 4px 8px rgba(0,0,0,0.15), -1px -1px 1px rgba(255,255,255,0.8);
+    --shadow-glow: 0 0 10px 2px rgba(255,71,87,0.6);
+
+    --ease-mech: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.25;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  .container {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  @media (min-width: 1024px) {
+    .container { padding: 0 48px; }
+  }
+
+  section {
+    position: relative;
+    z-index: 2;
+    padding: 64px 0;
+  }
+  @media (min-width: 1024px) {
+    section { padding: 96px 0; }
+  }
+
+  h1, h2, h3, p { margin: 0; }
+
+  /* ============ NAVBAR ============ */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(224,229,236,0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-dark);
+  }
+  .navbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    max-width: 72rem;
+    margin: 0 auto;
+  }
+  @media (min-width: 1024px) { .navbar-inner { padding: 16px 48px; } }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+  .brand-led {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 10px 2px rgba(34,197,94,0.8);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .nav-links {
+    display: none;
+    gap: 8px;
+  }
+  @media (min-width: 900px) {
+    .nav-links { display: flex; }
+  }
+  .nav-link {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 200ms var(--ease-mech);
+  }
+  .nav-link:hover {
+    color: var(--text);
+    background: var(--foreground);
+    box-shadow: var(--shadow-recessed);
+  }
+
+  .nav-cta-wrap { display: flex; align-items: center; gap: 8px; }
+
+  /* ============ BUTTONS ============ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    border-radius: 12px;
+    padding: 16px 28px;
+    min-height: 48px;
+    transition: all 150ms var(--ease-mech);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-foreground);
+    box-shadow: 4px 4px 8px rgba(166,50,60,0.4), -4px -4px 8px rgba(255,100,110,0.35);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:active {
+    transform: translateY(2px);
+    box-shadow: inset 4px 4px 8px rgba(166,50,60,0.5), inset -4px -4px 8px rgba(255,100,110,0.3);
+  }
+  .btn-secondary {
+    background: var(--background);
+    color: var(--text);
+    box-shadow: var(--shadow-card);
+  }
+  .btn-secondary:hover { color: var(--accent); }
+  .btn-secondary:active {
+    transform: translateY(2px);
+    box-shadow: var(--shadow-pressed);
+  }
+  .btn-sm { padding: 10px 18px; font-size: 0.75rem; min-height: 40px; border-radius: 8px; }
+
+  /* ============ HERO ============ */
+  .hero {
+    padding-top: 72px;
+    padding-bottom: 64px;
+  }
+  @media (min-width: 1024px) { .hero { padding-top: 110px; padding-bottom: 96px; } }
+
+  .hero-grid {
+    display: grid;
+    gap: 48px;
+    align-items: center;
+  }
+  @media (min-width: 1024px) {
+    .hero-grid { grid-template-columns: 1.15fr 0.85fr; gap: 64px; }
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 10px;
+    border-radius: 999px;
+    background: var(--background);
+    box-shadow: var(--shadow-recessed);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+
+  .hero h1 {
+    font-size: 2.75rem;
+    line-height: 1.08;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    filter: drop-shadow(0 1px 1px #ffffff);
+  }
+  @media (min-width: 768px) { .hero h1 { font-size: 3.75rem; } }
+  @media (min-width: 1024px) { .hero h1 { font-size: 4.25rem; } }
+
+  .hero h1 .accent { color: var(--accent); }
+
+  .hero p.lede {
+    margin-top: 24px;
+    font-size: 1.1rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    max-width: 34rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 36px;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 28px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  }
+  .hero-meta-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .hero-meta-item strong {
+    display: block;
+    font-size: 1.1rem;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    text-transform: none;
+    margin-bottom: 2px;
+  }
+
+  /* ============ DEVICE MOCKUP ============ */
+  .device {
+    position: relative;
+    border-radius: 28px;
+    padding: 14px;
+    background: linear-gradient(135deg, #34393b, #202426);
+    box-shadow: var(--shadow-floating);
+    transition: transform 400ms var(--ease-mech);
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .device:hover { transform: scale(1.015) rotate(-0.3deg); }
+  .device::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background-image: url("https://www.transparenttextures.com/patterns/carbon-fibre.png");
+    opacity: 0.15;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+  .device-notch {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: 70px; height: 18px;
+    background: #101213;
+    border-radius: 0 0 12px 12px;
+    z-index: 2;
+  }
+  .device-screen {
+    position: relative;
+    border-radius: 18px;
+    background: #0c0f10;
+    aspect-ratio: 9 / 17.5;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 2px #000;
+  }
+  .device-screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+  }
+  .screen-content { padding: 22px 16px; color: #e0e5ec; position: relative; z-index: 0; }
+  .screen-topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.05em;
+    color: #7d8a94; margin-bottom: 18px;
+  }
+  .screen-dot { width: 6px; height: 6px; border-radius: 50%; background: #ff4757; box-shadow: 0 0 6px rgba(255,71,87,0.9); }
+  .screen-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+  .screen-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: #5f6b74; letter-spacing: 0.04em; }
+  .menu-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid #1c2022;
+  }
+  .menu-row-name { font-size: 0.8rem; font-weight: 600; }
+  .menu-row-desc { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: #5f6b74; margin-top: 2px; }
+  .menu-row-price { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 700; color: #ff4757; }
+  .screen-cta {
+    margin-top: 18px;
+    background: #ff4757;
+    color: #fff;
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    box-shadow: 0 0 14px rgba(255,71,87,0.45);
+  }
+
+  /* ============ SECTION HEADERS ============ */
+  .section-head {
+    max-width: 38rem;
+    margin-bottom: 56px;
+  }
+  .section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+  .section-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .section-eyebrow::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: var(--shadow-glow);
+  }
+  .section-head h2 {
+    font-size: 2.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  @media (min-width: 768px) { .section-head h2 { font-size: 2.5rem; } }
+  .section-head p {
+    margin-top: 16px;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: 1.65;
+  }
+
+  /* ============ CARD (bolted module) ============ */
+  .card {
+    position: relative;
+    background: var(--background);
+    border-radius: 16px;
+    box-shadow: var(--shadow-card);
+    padding: 32px;
+    transition: transform 300ms ease-out, box-shadow 300ms ease-out;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-floating);
+  }
+  .card-screws::before, .card-screws::after {
+    content: '';
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(0,0,0,0.28), transparent 70%);
+    top: 12px;
+  }
+  .card-screws::before { left: 12px; }
+  .card-screws::after { right: 12px; }
+  .card-vents {
+    position: absolute;
+    top: 14px; right: 30px;
+    display: flex; gap: 4px;
+  }
+  .vent-slot {
+    width: 3px; height: 20px;
+    border-radius: 999px;
+    background: var(--muted);
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.15);
+  }
+
+  .icon-housing {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--background);
+    box-shadow: var(--shadow-floating);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 22px;
+    transition: transform 200ms var(--ease-mech);
+  }
+  .card:hover .icon-housing { transform: rotate(8deg) scale(1.05); }
+  .icon-housing svg { color: var(--accent); }
+
+  .card h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+  .card p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; }
+
+  /* ============ FEATURES GRID ============ */
+  .features-grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) { .features-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1024px) { .features-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+  /* ============ HOW IT WORKS ============ */
+  .steps-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+    position: relative;
+  }
+  @media (min-width: 900px) {
+    .steps-row { grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  }
+
+  .pipe {
+    display: none;
+  }
+  @media (min-width: 900px) {
+    .pipe {
+      display: block;
+      position: absolute;
+      top: 27px;
+      left: 12.5%;
+      right: 12.5%;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--muted);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(255,255,255,0.6);
+      z-index: 0;
+    }
+  }
+
+  .step {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+  .step-node {
+    width: 56px; height: 56px;
+    margin: 0 auto 22px;
+    border-radius: 50%;
+    background: var(--background);
+    box-shadow: var(--shadow-floating);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+  .step h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+  .step p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; max-width: 15rem; margin: 0 auto; }
+
+  /* ============ STATS STRIP (dark) ============ */
+  .stats {
+    background: #2d3436;
+    background-image:
+      linear-gradient(#3a4144 1px, transparent 1px),
+      linear-gradient(90deg, #3a4144 1px, transparent 1px);
+    background-size: 40px 40px;
+    color: #e0e5ec;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    text-align: center;
+  }
+  @media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+  .stat-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #ffffff;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+  .stat-num .unit { color: var(--accent); }
+  .stat-label {
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b98a5;
+  }
+
+  /* ============ PRICING ============ */
+  .pricing-grid {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 900px) { .pricing-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .price-card {
+    position: relative;
+    background: var(--background);
+    border-radius: 20px;
+    padding: 36px 30px;
+    box-shadow: var(--shadow-card);
+    transition: transform 300ms ease-out, box-shadow 300ms ease-out;
+  }
+  .price-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-floating); }
+  .price-card.featured {
+    box-shadow: var(--shadow-floating);
+    border: 1px solid rgba(255,71,87,0.3);
+  }
+  .price-hole {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--background);
+    box-shadow: var(--shadow-recessed);
+    margin: 0 auto 20px;
+  }
+  .plan-name { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+  .plan-price {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .plan-price span { font-size: 1rem; font-weight: 600; color: var(--text-muted); }
+  .plan-tagline { text-align: center; margin-top: 8px; color: var(--text-muted); font-size: 0.9rem; }
+  .plan-features { margin: 28px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .plan-features li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 0.9rem; color: var(--text);
+  }
+  .plan-features svg { flex-shrink: 0; margin-top: 2px; color: var(--accent); }
+  .price-card .btn { width: 100%; margin-top: 28px; }
+  .featured-tag {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 999px;
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* ============ FAQ ============ */
+  .faq-list { display: flex; flex-direction: column; gap: 14px; max-width: 42rem; margin: 0 auto; }
+  .faq-item {
+    background: var(--background);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+  .faq-question {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px;
+    background: none; border: none; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.98rem; font-weight: 600; color: var(--text);
+    text-align: left;
+  }
+  .faq-question .chev {
+    flex-shrink: 0;
+    transition: transform 250ms var(--ease-mech);
+    color: var(--text-muted);
+  }
+  .faq-item.open .faq-question .chev { transform: rotate(180deg); color: var(--accent); }
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 300ms ease;
+  }
+  .faq-answer-inner {
+    padding: 0 24px 20px;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+
+  /* ============ CTA ============ */
+  .cta-panel {
+    background: linear-gradient(135deg, var(--foreground), var(--background));
+    border-radius: 30px;
+    padding: 56px 32px;
+    text-align: center;
+    box-shadow: var(--shadow-floating);
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-panel::before {
+    content: '';
+    position: absolute;
+    top: -40%; left: -10%;
+    width: 60%; height: 140%;
+    background: radial-gradient(circle, rgba(255,255,255,0.5), transparent 70%);
+    pointer-events: none;
+  }
+  .cta-panel h2 {
+    font-size: 2rem; font-weight: 700; letter-spacing: -0.02em;
+    max-width: 30rem; margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+  @media (min-width: 768px) { .cta-panel h2 { font-size: 2.4rem; } }
+  .cta-panel p {
+    margin-top: 16px; color: var(--text-muted); font-size: 1.02rem;
+    position: relative; z-index: 1;
+  }
+  .cta-panel .hero-actions { justify-content: center; position: relative; z-index: 1; margin-top: 32px; }
+
+  /* ============ FOOTER ============ */
+  footer {
+    padding: 48px 0 40px;
+    border-top: 1px solid var(--border-dark);
+  }
+  .footer-inner {
+    display: flex; flex-direction: column; gap: 24px;
+    align-items: center; text-align: center;
+  }
+  @media (min-width: 768px) {
+    .footer-inner { flex-direction: row; justify-content: space-between; text-align: left; }
+  }
+  .footer-status {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a { font-size: 0.85rem; color: var(--text-muted); transition: color 200ms; }
+  .footer-links a:hover { color: var(--accent); }
+
+  /* ============ MOBILE MENU ============ */
+  .menu-toggle {
+    display: none;
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--background);
+    box-shadow: var(--shadow-card);
+    border: none;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  @media (max-width: 899px) { .menu-toggle { display: flex; } }
+  .mobile-drawer {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 24px 20px;
+    background: var(--background);
+    border-bottom: 1px solid var(--border-dark);
+  }
+  .mobile-drawer.open { display: flex; }
+  .mobile-drawer a {
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .reveal-scope { opacity: 0; transform: translateY(16px); }
+  .reveal-scope.in { animation: reveal 700ms var(--ease-mech) forwards; }
+  @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(255,71,87,0.25);
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="#top" class="brand">
+      <span class="brand-led"></span>
+      KIOSK
+    </a>
+    <div class="nav-links">
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how-it-works">How it works</a>
+      <a class="nav-link" href="#pricing">Pricing</a>
+      <a class="nav-link" href="#faq">FAQ</a>
+    </div>
+    <div class="nav-cta-wrap">
+      <a class="btn btn-secondary btn-sm" href="#pricing" style="display:none;" id="desktop-login">Sign in</a>
+      <a class="btn btn-primary btn-sm" href="#pricing">Start free</a>
+      <button class="menu-toggle" id="menu-toggle" aria-label="Open menu" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-drawer" id="mobile-drawer">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+  </div>
+</nav>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div>
+          <div class="status-badge">
+            <span class="brand-led" style="width:8px;height:8px;"></span>
+            LIVE ON CLOUDFLARE EDGE
+          </div>
+          <h1>Your shop's menu, <span class="accent">live in Telegram</span> by tonight.</h1>
+          <p class="lede">Kiosk turns any restaurant, café or small shop into a mobile storefront that takes orders straight through Telegram — no app to install, no plugin to configure. Built on edge infrastructure so it loads instantly, anywhere.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#pricing">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg>
+              Launch your storefront
+            </a>
+            <a class="btn btn-secondary" href="#how-it-works">See how it works</a>
+          </div>
+          <div class="hero-meta">
+            <div class="hero-meta-item"><strong>&lt; 3 min</strong>to first live menu</div>
+            <div class="hero-meta-item"><strong>0%</strong>order commission</div>
+            <div class="hero-meta-item"><strong>5</strong>storefronts per account</div>
+          </div>
+        </div>
+
+        <div class="device">
+          <div class="device-notch"></div>
+          <div class="device-screen">
+            <div class="screen-content">
+              <div class="screen-topbar">
+                <span>KIOSK · TELEGRAM</span>
+                <span class="screen-dot"></span>
+              </div>
+              <div class="screen-title">Sunroom Café</div>
+              <div class="screen-sub">12 ITEMS · OPEN NOW</div>
+              <div style="margin-top:18px;">
+                <div class="menu-row">
+                  <div>
+                    <div class="menu-row-name">Flat White</div>
+                    <div class="menu-row-desc">Double espresso, steamed milk</div>
+                  </div>
+                  <div class="menu-row-price">$4.50</div>
+                </div>
+                <div class="menu-row">
+                  <div>
+                    <div class="menu-row-name">Almond Croissant</div>
+                    <div class="menu-row-desc">Baked this morning</div>
+                  </div>
+                  <div class="menu-row-price">$3.80</div>
+                </div>
+                <div class="menu-row" style="border-bottom:none;">
+                  <div>
+                    <div class="menu-row-name">Iced Matcha</div>
+                    <div class="menu-row-desc">Ceremonial grade</div>
+                  </div>
+                  <div class="menu-row-price">$5.20</div>
+                </div>
+              </div>
+              <div class="screen-cta">Send order to Telegram</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features">
+    <div class="container">
+      <div class="section-head center">
+        <div class="section-eyebrow">Built for small operators</div>
+        <h2>Everything a storefront needs, nothing it doesn't</h2>
+        <p>No dashboards to babysit. Kiosk handles the plumbing — you handle the food, the stock, and the customers.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="card card-screws">
+          <div class="card-vents"><span class="vent-slot"></span><span class="vent-slot"></span><span class="vent-slot"></span></div>
+          <div class="icon-housing">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg>
+          </div>
+          <h3>Orders straight to Telegram</h3>
+          <p>Every order lands in your Telegram chat the instant a customer checks out — name, items, total, and delivery details, formatted and ready to act on.</p>
+        </div>
+
+        <div class="card card-screws">
+          <div class="card-vents"><span class="vent-slot"></span><span class="vent-slot"></span><span class="vent-slot"></span></div>
+          <div class="icon-housing">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <h3>Runs on the edge</h3>
+          <p>Your menu is served from Cloudflare's global network. A customer in another country sees it load just as fast as one down the street.</p>
+        </div>
+
+        <div class="card card-screws">
+          <div class="card-vents"><span class="vent-slot"></span><span class="vent-slot"></span><span class="vent-slot"></span></div>
+          <div class="icon-housing">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </div>
+          <h3>Your own domain</h3>
+          <p>Point a custom domain at your storefront on the Pro plan. No "made with Kiosk" badge, no shared subdomain — just your name.</p>
+        </div>
+
+        <div class="card card-screws">
+          <div class="card-vents"><span class="vent-slot"></span><span class="vent-slot"></span><span class="vent-slot"></span></div>
+          <div class="icon-housing">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          </div>
+          <h3>Take payments online</h3>
+          <p>Connect Stripe or Monobank and let customers pay before you even see the order — or keep it cash-on-delivery, your call.</p>
+        </div>
+
+        <div class="card card-screws">
+          <div class="card-vents"><span class="vent-slot"></span><span class="vent-slot"></span><span class="vent-slot"></span></div>
+          <div class="icon-housing">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          </div>
+          <h3>Know what's selling</h3>
+          <p>See which items move, which times get busy, and where orders come from — enough signal to plan stock without a spreadsheet.</p>
+        </div>
+
+        <div class="card card-screws">
+          <div class="card-vents"><span class="vent-slot"></span><span class="vent-slot"></span><span class="vent-slot"></span></div>
+          <div class="icon-housing">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 4v5"/><path d="M16 4v5"/></svg>
+          </div>
+          <h3>Run more than one shop</h3>
+          <p>On the Business plan, manage up to five storefronts — different menus, different Telegram bots — from a single account.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section id="how-it-works" style="background: var(--foreground);">
+    <div class="container">
+      <div class="section-head center">
+        <div class="section-eyebrow">Setup, start to finish</div>
+        <h2>Four steps between you and your first order</h2>
+      </div>
+
+      <div class="steps-row">
+        <div class="pipe"></div>
+        <div class="step">
+          <div class="step-node">1</div>
+          <h3>Add your items</h3>
+          <p>Name, price, photo, description. Organize into categories as you go.</p>
+        </div>
+        <div class="step">
+          <div class="step-node">2</div>
+          <h3>Connect your bot</h3>
+          <p>Link a Telegram bot token so orders arrive in a chat you already check.</p>
+        </div>
+        <div class="step">
+          <div class="step-node">3</div>
+          <h3>Share the link</h3>
+          <p>Post it, pin it, print it on a table card — customers open it like any webpage.</p>
+        </div>
+        <div class="step">
+          <div class="step-node">4</div>
+          <h3>Get the order</h3>
+          <p>It lands in Telegram, formatted and ready. Confirm it and get cooking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="stats">
+    <div class="container">
+      <div class="stats-grid">
+        <div>
+          <div class="stat-num">0<span class="unit">%</span></div>
+          <div class="stat-label">Commission on orders</div>
+        </div>
+        <div>
+          <div class="stat-num">&lt;100<span class="unit">ms</span></div>
+          <div class="stat-label">Typical edge response</div>
+        </div>
+        <div>
+          <div class="stat-num">20<span class="unit">+</span></div>
+          <div class="stat-label">Free-tier products</div>
+        </div>
+        <div>
+          <div class="stat-num">5<span class="unit">×</span></div>
+          <div class="stat-label">Storefronts on Business</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PRICING ============ -->
+  <section id="pricing">
+    <div class="container">
+      <div class="section-head center">
+        <div class="section-eyebrow">Plans</div>
+        <h2>Start free. Upgrade when it's worth it.</h2>
+        <p>No setup fee, no contract. Change or cancel a plan any time from your dashboard.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-hole"></div>
+          <div class="plan-name">Free</div>
+          <div class="plan-price">$0<span>/mo</span></div>
+          <div class="plan-tagline">For testing the waters</div>
+          <ul class="plan-features">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>1 storefront</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Up to 20 products</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Orders via Telegram</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>"Powered by Kiosk" badge</li>
+          </ul>
+          <a class="btn btn-secondary" href="#top">Start free</a>
+        </div>
+
+        <div class="price-card featured">
+          <div class="featured-tag">Most popular</div>
+          <div class="price-hole"></div>
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">$9<span>/mo</span></div>
+          <div class="plan-tagline">For a shop that's growing</div>
+          <ul class="plan-features">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Unlimited products</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Your own custom domain</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Online payments (Stripe / Monobank)</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>No branding badge</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Sales analytics</li>
+          </ul>
+          <a class="btn btn-primary" href="#top">Go Pro</a>
+        </div>
+
+        <div class="price-card">
+          <div class="price-hole"></div>
+          <div class="plan-name">Business</div>
+          <div class="plan-price">$29<span>/mo</span></div>
+          <div class="plan-tagline">For more than one location</div>
+          <ul class="plan-features">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Up to 5 storefronts</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Everything in Pro</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Priority support</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Custom storefront themes</li>
+          </ul>
+          <a class="btn btn-secondary" href="#top">Talk to us</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section id="faq" style="background: var(--foreground);">
+    <div class="container">
+      <div class="section-head center">
+        <div class="section-eyebrow">Questions</div>
+        <h2>Before you ask, we answered</h2>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question">
+            Do my customers need to install anything?
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">No. Your storefront is a regular web page. Customers open the link, browse, and check out — the only thing that touches Telegram is where the finished order gets delivered, to you.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            What happens if I go over 20 products on the free plan?
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">You'll be asked to upgrade to Pro before adding the 21st product. Nothing you've already published gets hidden or removed — the limit only stops new additions.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            Can I use my own domain instead of a Kiosk subdomain?
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes, on Pro and Business. Point your domain's DNS at Kiosk and we handle the certificate automatically — no separate hosting to manage.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            How do online payments actually work?
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Connect a Stripe or Monobank account from your dashboard. Kiosk never holds your money — payments go directly to your connected account, and the order still gets sent to your Telegram chat.</div></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            Can I cancel any time?
+            <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer"><div class="faq-answer-inner">Yes. Downgrade or cancel from billing settings whenever you like — you keep paid features until the end of the current billing period, then drop to Free automatically.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section>
+    <div class="container">
+      <div class="cta-panel">
+        <h2>Your menu could be live in Telegram before your next shift.</h2>
+        <p>Free plan, no card required. Upgrade only once it's actually paying for itself.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#top">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg>
+            Create your storefront
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-status">
+      <span class="brand-led" style="width:8px;height:8px;"></span>
+      All systems operational
+    </div>
+    <div class="footer-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mobile menu toggle
+  const menuToggle = document.getElementById('menu-toggle');
+  const drawer = document.getElementById('mobile-drawer');
+  menuToggle.addEventListener('click', () => {
+    const isOpen = drawer.classList.toggle('open');
+    menuToggle.setAttribute('aria-expanded', isOpen);
+  });
+  drawer.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    drawer.classList.remove('open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+  }));
+
+  // FAQ accordion
+  document.querySelectorAll('.faq-item').forEach(item => {
+    const question = item.querySelector('.faq-question');
+    const answer = item.querySelector('.faq-answer');
+    question.addEventListener('click', () => {
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(other => {
+        if (other !== item) {
+          other.classList.remove('open');
+          other.querySelector('.faq-answer').style.maxHeight = null;
+        }
+      });
+      if (isOpen) {
+        item.classList.remove('open');
+        answer.style.maxHeight = null;
+      } else {
+        item.classList.add('open');
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+      }
+    });
+  });
+
+  // One-time hero entrance
+  window.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('.hero-grid > div:first-child').classList.add('reveal-scope');
+    document.querySelector('.device').classList.add('reveal-scope');
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.hero .reveal-scope').forEach((el, i) => {
+        setTimeout(() => el.classList.add('in'), i * 120);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

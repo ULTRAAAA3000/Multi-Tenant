@@ -8,6 +8,9 @@ import ordersRoutes from "./routes/orders";
 import settingsRoutes from "./routes/settings";
 import mediaRoutes from "./routes/media";
 import paymentsRoutes from "./payments/routes";
+import authRoutes from "./auth/routes";
+import adminTenantsRoutes from "./admin/tenants";
+import billingRoutes from "./admin/billing";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -39,6 +42,21 @@ app.get("/health", (c) => {
 });
 
 /**
+ * Auth (register/login) — публичные роуты, не требуют ни tenant,
+ * ни существующей сессии.
+ */
+app.route("/auth", authRoutes);
+
+/**
+ * Admin API — управление аккаунтом владельца: заведения, биллинг.
+ * Защищено requireAuth (JWT), НЕ проходит через tenantResolver —
+ * владелец управляет несколькими tenants из одного аккаунта, а не
+ * действует в контексте одного tenant, определённого по Host.
+ */
+app.route("/admin/tenants", adminTenantsRoutes);
+app.route("/admin/billing", billingRoutes);
+
+/**
  * Платёжные webhooks регистрируются ОТДЕЛЬНО от /api группы,
  * т.к. провайдеры (Stripe/Monopay) не присылают наш Host-заголовок
  * в ожидаемом формате поддомена — tenantResolver здесь неприменим.
@@ -52,7 +70,8 @@ app.route("/payments", paymentsRoutes);
  * tenantResolver: он определяет tenant_id по Host-заголовку
  * (поддомен или custom domain), проверяет активность tenant и
  * допустимость custom domain по тарифу, и кладёт результат в
- * контекст для нижестоящих хендлеров.
+ * контекст для нижестоящих хендлеров. Это публичная витрина —
+ * доступна без авторизации, посетители не логинятся.
  */
 const api = new Hono<{ Bindings: Env }>();
 api.use("*", tenantResolver());
@@ -63,12 +82,5 @@ api.route("/settings", settingsRoutes);
 api.route("/media", mediaRoutes);
 
 app.route("/api", api);
-
-/**
- * Админ-роуты (создание tenant, billing, авторизация) добавляются
- * в Фазе 5 — они работают НЕ через tenantResolver (владелец управляет
- * несколькими tenants из одного аккаунта), а через отдельный auth
- * middleware, который резолвит ownerId из JWT/сессии.
- */
 
 export default app;

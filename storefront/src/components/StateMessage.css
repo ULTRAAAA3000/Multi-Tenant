@@ -1,0 +1,57 @@
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--text-muted);
+}
+
+.state-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--background);
+  box-shadow: var(--shadow-recessed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.state-message h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.state-message p {
+  margin: 0;
+  font-size: 0.88rem;
+  max-width: 20rem;
+  line-height: 1.6;
+}
+
+.state-action {
+  margin-top: 20px;
+  border: none;
+  cursor: pointer;
+  background: var(--background);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 12px 22px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  transition: all 150ms var(--ease-mech);
+}
+
+.state-action:hover {
+  color: var(--accent);
+}
+
+.state-action:active {
+  transform: translateY(1px);
+  box-shadow: var(--shadow-pressed);
+}

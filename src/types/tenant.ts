@@ -55,14 +55,14 @@ export interface CreateTenantInput {
   ownerId: string;
   name: string;
   slug: string;
-  currency?: string;
+  currency?: string | undefined;
 }
 
 export interface UpdateTenantInput {
-  name?: string;
-  logoUrl?: string;
-  themeColor?: string;
-  currency?: string;
-  telegramBotToken?: string;
-  telegramChatId?: string;
+  name?: string | undefined;
+  logoUrl?: string | undefined;
+  themeColor?: string | undefined;
+  currency?: string | undefined;
+  telegramBotToken?: string | undefined;
+  telegramChatId?: string | undefined;
 }

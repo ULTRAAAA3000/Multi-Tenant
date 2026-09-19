@@ -64,6 +64,14 @@ export interface Order {
   items?: OrderItem[];
 }
 
+export interface TenantInfo {
+  name: string;
+  logoUrl: string | null;
+  themeColor: string;
+  currency: string;
+  showBranding: boolean;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

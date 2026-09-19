@@ -111,3 +111,36 @@ npx wrangler secret put MONOPAY_TOKEN                        # опционал�
 Подключение Telegram-бота для tenant делается через `PATCH` на tenant-admin
 эндпоинт (появится в Фазе 5) с полями `telegramBotToken` (сырой токен —
 шифруется автоматически перед сохранением) и `telegramChatId`.
+
+## Фаза 4 — Клиентский Frontend (Mobile-First Showcase/Menu) ✅
+
+React 18 + Vite, папка `storefront/`. Обращается к тому же Worker'у по
+относительным путям `/api/*` — резолвинг tenant происходит на бэкенде
+по Host-заголовку, фронтенд не передаёт tenant явно.
+
+- **`src/pages/Storefront.tsx`** — главный экран: категории, сетка
+  товаров (skeleton при загрузке, empty/error состояния), корзина,
+  чекаут, подтверждение заказа — один компонент-оркестратор
+- **`src/lib/cart.tsx`** — состояние корзины через React Context,
+  без внешних библиотек
+- **`src/lib/api.ts`** — тонкий fetch-клиент к Worker API
+- **`src/components/`** — Header, CategoryTabs, ProductCard,
+  CartDrawer, CheckoutForm, OrderConfirmation, BrandingFooter,
+  StateMessage
+- **`src/components/BrandingFooter.tsx`** — "Powered by" футер для
+  free-тарифа, управляется булевым пропом (готово для подключения к
+  `plan_limits.branding_removable` в Фазе 5)
+- Дизайн: та же индустриальная неоморфная система, что и в лендинге
+  (`/landing`) — общий визуальный язык между маркетингом и продуктом
+
+### Запуск локально
+
+```bash
+cd storefront
+npm install
+npm run dev       # http://localhost:5173, проксирует /api на прод по умолчанию — настройте dev-прокси при необходимости
+npm run build      # dist/ — статические файлы для Cloudflare Pages
+```
+
+Деплой: отдельный Cloudflare Pages проект, build output directory `storefront/dist`,
+build command `npm run build`, root directory `storefront`.

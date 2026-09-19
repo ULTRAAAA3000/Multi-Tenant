@@ -3,6 +3,7 @@ import type {
   Product,
   Order,
   CreateOrderInput,
+  TenantInfo,
   ApiErrorBody,
 } from "./types";
 
@@ -58,6 +59,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getTenantInfo: () => request<TenantInfo>("/tenant"),
+
   getCategories: () => request<Category[]>("/categories"),
 
   getProducts: (opts?: { categoryId?: string; onlyAvailable?: boolean }) => {

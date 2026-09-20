@@ -12,6 +12,7 @@ import paymentsRoutes from "./payments/routes";
 import authRoutes from "./auth/routes";
 import stripeConnectRoutes from "./payments/stripe-connect.routes";
 import adminTenantsRoutes from "./admin/tenants";
+import adminCatalogRoutes from "./admin/catalog";
 import billingRoutes from "./admin/billing";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -66,6 +67,7 @@ app.route("/auth/stripe", stripeConnectRoutes);
  */
 app.route("/admin/tenants", adminTenantsRoutes);
 app.route("/admin/billing", billingRoutes);
+app.route("/admin/catalog", adminCatalogRoutes);
 
 /**
  * Платёжные webhooks регистрируются ОТДЕЛЬНО от /api группы,

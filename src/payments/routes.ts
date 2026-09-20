@@ -3,6 +3,7 @@ import type { Env } from "../types/env";
 import { requireTenant } from "../middleware/tenant-resolver";
 import { enforceOnlinePaymentsAllowed } from "../middleware/plan-limits";
 import { OrdersRepository } from "../db/orders.repository";
+import { TenantsRepository } from "../db/tenants.repository";
 import { getPaymentAdapter, type SupportedProvider } from "./factory";
 import { PaymentProviderError } from "./provider.interface";
 import { errorResponse, Errors, ApiError } from "../utils/api";
@@ -20,6 +21,7 @@ const SUPPORTED_PROVIDERS: SupportedProvider[] = ["stripe", "monopay"];
 payments.post("/checkout", enforceOnlinePaymentsAllowed(), async (c) => {
   const tenant = requireTenant(c);
   const ordersRepo = new OrdersRepository(c.env.DB);
+  const tenantsRepo = new TenantsRepository(c.env.DB);
 
   try {
     const body = await c.req.json<Record<string, unknown>>();
@@ -42,6 +44,24 @@ payments.post("/checkout", enforceOnlinePaymentsAllowed(), async (c) => {
       throw Errors.validation("This order has already been paid");
     }
 
+    // Для Stripe оплата должна идти НАПРЯМУЮ на счёт заведения через
+    // Stripe Connect — без подключенного аккаунта деньги ушли бы на
+    // платформенный аккаунт, что противоречит цели фичи. Monopay не
+    // использует этот паттерн (у него нет Connect-аналога в данной
+    // интеграции), поэтому проверка специфична для provider === "stripe".
+    let stripeAccount: string | undefined;
+    if (provider === "stripe") {
+      const tenantRecord = await tenantsRepo.findById(tenant.tenantId);
+      if (!tenantRecord?.stripeUserId) {
+        throw new ApiError(
+          409,
+          "STRIPE_NOT_CONNECTED",
+          "This storefront hasn't connected a Stripe account yet. Connect Stripe from the dashboard to accept online payments."
+        );
+      }
+      stripeAccount = tenantRecord.stripeUserId;
+    }
+
     const adapter = getPaymentAdapter(c.env, provider);
     const intent = await adapter.createPaymentIntent({
       tenantId: tenant.tenantId,
@@ -50,6 +70,7 @@ payments.post("/checkout", enforceOnlinePaymentsAllowed(), async (c) => {
       currency: "USD", // валюта провайдера; tenant.currency используется для отображения, не для списания
       successUrl,
       cancelUrl,
+      stripeAccount,
     });
 
     return c.json({ data: intent });

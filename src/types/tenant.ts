@@ -21,6 +21,9 @@ export interface PlanLimits {
   priceUsdCents: number;
 }
 
+export type PaymentMode = "cash_on_pickup" | "online";
+export type NotificationChannel = "email" | "telegram";
+
 export interface Tenant {
   id: string;
   ownerId: string;
@@ -33,6 +36,12 @@ export interface Tenant {
   themeColor: string;
   currency: string;
   isActive: boolean;
+  stripeUserId: string | null;
+  stripeAccessToken: string | null;
+  stripeConnectedAt: string | null;
+  notificationEmail: string | null;
+  notificationChannels: NotificationChannel[];
+  paymentMode: PaymentMode;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,4 +74,18 @@ export interface UpdateTenantInput {
   currency?: string | undefined;
   telegramBotToken?: string | undefined;
   telegramChatId?: string | undefined;
+  notificationEmail?: string | undefined;
+  notificationChannels?: NotificationChannel[] | undefined;
+  paymentMode?: PaymentMode | undefined;
+}
+
+/**
+ * Поля, обновляемые ТОЛЬКО через Stripe Connect OAuth flow
+ * (src/payments/stripe-connect.ts), не через обычный PATCH tenant —
+ * stripe_access_token не должен приниматься как произвольный вход
+ * от клиента, только как результат обмена OAuth code на токен.
+ */
+export interface StripeConnectionInput {
+  stripeUserId: string;
+  stripeAccessToken: string; // уже зашифрован вызывающим кодом
 }

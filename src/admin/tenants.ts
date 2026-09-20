@@ -7,6 +7,7 @@ import { SubscriptionsRepository } from "../db/subscriptions.repository";
 import { encryptSecret } from "../utils/crypto";
 import { generateId, ApiError, errorResponse, Errors } from "../utils/api";
 import { requireString, requireSlug, optionalString } from "../utils/validation";
+import type { NotificationChannel, PaymentMode } from "../types/tenant";
 
 const adminTenants = new Hono<{ Bindings: Env }>();
 
@@ -80,11 +81,53 @@ adminTenants.patch("/:id", async (c) => {
     const themeColor = optionalString(body.themeColor, "themeColor", 20);
     const currency = optionalString(body.currency, "currency", 10);
     const telegramChatId = optionalString(body.telegramChatId, "telegramChatId", 100);
+    const notificationEmail = optionalString(body.notificationEmail, "notificationEmail", 254);
 
     let encryptedToken: string | undefined;
     if (body.telegramBotToken !== undefined) {
       const rawToken = requireString(body.telegramBotToken, "telegramBotToken", 200);
       encryptedToken = await encryptSecret(rawToken, c.env.TELEGRAM_BOT_TOKEN_ENCRYPTION_KEY);
+    }
+
+    // notificationChannels — Telegram теперь опционален по дизайну:
+    // "email" всегда доступен (не требует внешней настройки), "telegram"
+    // добавляется в список только если владелец сам его включил.
+    let notificationChannels: NotificationChannel[] | undefined;
+    if (body.notificationChannels !== undefined) {
+      if (!Array.isArray(body.notificationChannels)) {
+        throw Errors.validation('Field "notificationChannels" must be an array');
+      }
+      const valid: NotificationChannel[] = ["email", "telegram"];
+      for (const channel of body.notificationChannels) {
+        if (!valid.includes(channel as NotificationChannel)) {
+          throw Errors.validation(
+            `Field "notificationChannels" may only contain: ${valid.join(", ")}`
+          );
+        }
+      }
+      notificationChannels = body.notificationChannels as NotificationChannel[];
+    }
+
+    let paymentMode: PaymentMode | undefined;
+    if (body.paymentMode !== undefined) {
+      const validModes: PaymentMode[] = ["cash_on_pickup", "online"];
+      const raw = requireString(body.paymentMode, "paymentMode", 20) as PaymentMode;
+      if (!validModes.includes(raw)) {
+        throw Errors.validation(`Field "paymentMode" must be one of: ${validModes.join(", ")}`);
+      }
+      // Онлайн-оплата не может включиться без подключенного Stripe —
+      // иначе тумблер в дашборде "включил бы" оплату, которая физически
+      // не может пройти (checkout.ts требует stripeUserId для provider
+      // stripe). Предотвращаем это несоответствие здесь же, а не только
+      // в момент реального checkout.
+      if (raw === "online" && !existing.stripeUserId) {
+        throw new ApiError(
+          409,
+          "STRIPE_NOT_CONNECTED",
+          "Connect a Stripe account before enabling online payments"
+        );
+      }
+      paymentMode = raw;
     }
 
     const updated = await repo.update(id, {
@@ -94,6 +137,9 @@ adminTenants.patch("/:id", async (c) => {
       currency,
       telegramBotToken: encryptedToken,
       telegramChatId,
+      notificationEmail,
+      notificationChannels,
+      paymentMode,
     });
 
     return c.json({ data: updated });

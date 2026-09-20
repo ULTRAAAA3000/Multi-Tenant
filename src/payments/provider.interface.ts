@@ -14,6 +14,14 @@ export interface CreatePaymentIntentParams {
   customerEmail?: string | undefined;
   successUrl: string;
   cancelUrl: string;
+  /**
+   * Stripe Connected Account ID (acct_...), если у tenant подключен
+   * Stripe Connect. Когда задан, Checkout Session создаётся ОТ ИМЕНИ
+   * этого аккаунта (заголовок Stripe-Account) — деньги идут напрямую
+   * на счёт заведения, минуя платформенный аккаунт. Не используется
+   * другими провайдерами (Monopay не имеет этого паттерна).
+   */
+  stripeAccount?: string | undefined;
 }
 
 export interface PaymentIntentResult {

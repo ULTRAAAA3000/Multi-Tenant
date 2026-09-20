@@ -208,3 +208,102 @@ Stripe Customer Portal, обработка неудачных платежей) 
 - Реальная Stripe Subscriptions интеграция для `change-plan` (см. выше)
 - UI дашборда владельца (Фаза 5 дала только API)
 - Rate limiting на `/auth/login` (защита от брутфорса)
+
+## Рефакторинг: Zero-Friction Europe (Stripe Connect + Notification Engine)
+
+Точечный рефакторинг поверх всех 5 фаз — не переписывание с нуля.
+Три модуля: Payment Engine (Stripe Connect OAuth), Notification Engine
+(email-first, Telegram опционален), Onboarding (cash-on-pickup по умолчанию).
+
+### Новая миграция
+
+```bash
+npx wrangler d1 migrations apply multi-tenant-db --remote
+```
+
+`migrations/0003_stripe_connect_notifications.sql` добавляет в `tenants`:
+`stripe_user_id`, `stripe_access_token` (зашифрован), `stripe_connected_at`,
+`notification_email`, `notification_channels` (JSON-массив, default `["email"]`),
+`payment_mode` (default `'cash_on_pickup'`).
+
+### Новые секреты/переменные
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put STRIPE_SECRET_KEY   # если ещё не задан с Фазы 3
+```
+
+В `wrangler.toml` `[vars]`:
+```toml
+STRIPE_CONNECT_CLIENT_ID = "ca_..."   # публичный ID Stripe-приложения, не секрет
+NOTIFICATION_FROM_EMAIL = "onboarding@resend.dev"  # тестовый режим Resend
+```
+
+Для тестового режима Resend (`onboarding@resend.dev`) письма уходят только
+на email, привязанный к вашему Resend-аккаунту — это ограничение самого
+Resend для неверифицированных доменов, не баг в коде. При деплое на
+реальный домен замените `NOTIFICATION_FROM_EMAIL` на адрес с верифицированного
+домена (Resend Dashboard → Domains).
+
+### Payment Engine: Stripe Connect OAuth (`src/payments/stripe-connect*.ts`)
+
+- `GET /auth/stripe/connect?tenant_id=...` — защищено `requireAuth`, возвращает
+  authorize URL. **Отличие от ТЗ**: смонтировано на `/auth/stripe/*`, не
+  `/api/auth/stripe/*` — `/api/*` в этой системе жёстко зарезервирован под
+  tenant-scoped публичную витрину через `tenantResolver` (Фаза 2); смешивать
+  туда authenticated admin-роуты means нарушить существующую границу контекстов.
+- `GET /auth/stripe/callback` — принимает `code`+`state` от Stripe (без
+  `requireAuth` — это браузерный редирект, доверие устанавливается через
+  `state`, содержащий `tenant_id`), обменивает code на `access_token`,
+  шифрует и сохраняет.
+- `POST /auth/stripe/disconnect` — отзывает доступ на стороне Stripe
+  (best-effort) и очищает поля в БД, откатывает `payment_mode` на `cash_on_pickup`.
+- **Checkout Session от имени заведения**: `payments/routes.ts` при
+  `provider: "stripe"` требует `stripeUserId` у tenant и передаёт его как
+  `Stripe-Account` заголовок — деньги идут напрямую на счёт заведения,
+  минуя платформенный аккаунт. Без подключенного Stripe Connect онлайн-
+  оплата через Stripe для этого tenant заблокирована (`409 STRIPE_NOT_CONNECTED`).
+
+### Notification Engine (`src/notifications/`)
+
+Абстрактный `NotificationChannelProvider` интерфейс, два провайдера:
+- `EmailNotificationProvider` — Resend API, HTML-письмо с составом заказа
+- `TelegramNotificationProvider` — обёртка вокруг `telegram.service.ts`
+  из Фазы 3 под общий интерфейс (логика форматирования не дублируется)
+
+`NotificationService.notifyNewOrder()` — рассылает по всем каналам из
+`tenant.notificationChannels` параллельно (`Promise.allSettled`), сбой
+одного канала не блокирует остальные. Вызывается из `POST /api/orders`.
+
+**Про WebSoundProvider из исходного ТЗ**: звуковой сигнал/toast в
+дашборде — это то, как уже доставленное уведомление отображается в
+браузере владельца, а не отдельный канал доставки на бэкенде. Backend
+не может "прислать звук" напрямую в чужой открытый браузер без
+транспорта (WebSocket или polling), который держит открытым сам
+дашборд. Раз UI дашборда не существует (см. ниже), это не реализовано —
+задокументировано как задача для будущего дашборд-фронтенда.
+
+### Onboarding изменения
+
+- `payment_mode` по умолчанию `'cash_on_pickup'` (DEFAULT в схеме) —
+  новый tenant готов принимать заказы сразу после создания, без Stripe.
+- `PATCH /admin/tenants/:id` блокирует переключение `paymentMode` на
+  `'online'`, если `stripeUserId` не задан (`409 STRIPE_NOT_CONNECTED`) —
+  тумблер в будущем дашборде не может включить оплату, которая физически
+  не пройдёт на checkout.
+- Telegram-поля в `PATCH /admin/tenants/:id` остаются необязательными,
+  как и раньше — не были обязательными и до этого рефакторинга.
+
+## Известные ограничения (честно, без замалчивания)
+
+- **UI дашборда не существует.** Все эндпоинты Stripe Connect, billing,
+  admin/tenants — это готовый API без фронтенда. Кнопка "Connect with
+  Stripe", статус "🟢 Stripe Connected", звуковые сигналы на живых
+  заказах — всё это UI-задачи для будущей отдельной фазы (аналогично
+  `storefront/`), не реализованы.
+- **Полная ECDSA-верификация Monopay webhook** всё ещё упрощена (техдолг
+  с Фазы 3, не тронут этим рефакторингом).
+- **Stripe Subscriptions для смены тарифа** (`/admin/billing/change-plan`)
+  всё ещё меняет план напрямую, без реального billing-цикла (техдолг с Фазы 5).
+- **Rate limiting на `/auth/login` и `/auth/stripe/callback`** не добавлен —
+  особенно важно для callback, куда может прийти произвольный `code`/`state`.

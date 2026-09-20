@@ -42,12 +42,25 @@ export class StripeAdapter implements PaymentProviderAdapter {
       body.set("customer_email", params.customerEmail);
     }
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+
+    // Stripe-Account заголовок направляет вызов "от имени" connected
+    // account — это то, что заставляет деньги идти на счёт заведения,
+    // а не на платформенный аккаунт. Без него (нет Stripe Connect у
+    // tenant) сессия создаётся как обычно, на платформенный аккаунт —
+    // такой заказ технически возможен, но противоречит цели фичи,
+    // поэтому вызывающий код (payments/routes.ts) должен проверять
+    // наличие stripeAccount перед вызовом этого метода для tenant-заказов.
+    if (params.stripeAccount) {
+      headers["Stripe-Account"] = params.stripeAccount;
+    }
+
     const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.secretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers,
       body: body.toString(),
     });
 
@@ -113,6 +126,7 @@ export class StripeAdapter implements PaymentProviderAdapter {
     const event = JSON.parse(rawBody) as {
       type: string;
       data: { object: { id: string; metadata?: { order_id?: string } } };
+      account?: string; // присутствует для Connect-событий (acct_...)
     };
 
     const orderId = event.data.object.metadata?.order_id ?? null;

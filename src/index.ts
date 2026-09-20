@@ -10,6 +10,7 @@ import mediaRoutes from "./routes/media";
 import tenantInfoRoutes from "./routes/tenant-info";
 import paymentsRoutes from "./payments/routes";
 import authRoutes from "./auth/routes";
+import stripeConnectRoutes from "./payments/stripe-connect.routes";
 import adminTenantsRoutes from "./admin/tenants";
 import billingRoutes from "./admin/billing";
 
@@ -47,6 +48,15 @@ app.get("/health", (c) => {
  * ни существующей сессии.
  */
 app.route("/auth", authRoutes);
+
+/**
+ * Stripe Connect OAuth. Смонтирован на /auth/stripe (не /api/auth/stripe
+ * — /api зарезервирован под tenant-scoped витрину через tenantResolver,
+ * а эти роуты работают по-другому: /connect и /disconnect — от имени
+ * авторизованного владельца (requireAuth), /callback — от Stripe без
+ * авторизации, доверие устанавливается через OAuth state параметр).
+ */
+app.route("/auth/stripe", stripeConnectRoutes);
 
 /**
  * Admin API — управление аккаунтом владельца: заведения, биллинг.

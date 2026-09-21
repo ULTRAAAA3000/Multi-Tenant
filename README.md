@@ -307,3 +307,83 @@ Resend для неверифицированных доменов, не баг �
   всё ещё меняет план напрямую, без реального billing-цикла (техдолг с Фазы 5).
 - **Rate limiting на `/auth/login` и `/auth/stripe/callback`** не добавлен —
   особенно важно для callback, куда может прийти произвольный `code`/`state`.
+
+## Owner Dashboard (React) — управление заведением
+
+React 18 + Vite + React Router, папка `dashboard/`. В отличие от
+`storefront/` (обслуживается с поддомена/домена одного заведения, tenant
+резолвится по Host), дашборд обслуживается с ОДНОГО домена для всех
+владельцев, а один владелец может управлять несколькими заведениями —
+поэтому tenant здесь передаётся явно через заголовок `X-Tenant-Id`
+на роуты `/admin/catalog/*` (см. `src/admin/tenant-context.ts` на бэкенде).
+
+### Разделы
+- **`/login`, `/register`** — авторизация через `/auth/login`, `/auth/register`
+- **`/onboarding`** — создание первого заведения сразу после регистрации
+  (cash-on-pickup по умолчанию, без блокировки на настройке оплаты)
+- **`/orders`** — живые заказы с polling каждые 8 секунд, звуковой
+  сигнал (Web Audio API, без аудиофайлов) на новый заказ, смена статуса
+- **`/products`** — CRUD товаров и категорий, загрузка фото через
+  `/admin/catalog/media/upload`
+- **`/settings`** — кнопка **Connect with Stripe** (OAuth-редирект,
+  никаких ключей вручную), статус подключения с возможностью отключить,
+  переключатели каналов уведомлений (email/Telegram), custom domain
+- **`/billing`** — текущий тариф, использование лимитов (`N / max`),
+  смена плана
+
+### Архитектурное решение: `/admin/catalog/*`
+
+Изначально на бэкенде не было admin-доступа к товарам/заказам по
+выбранному `tenant_id` — только публичный `/api/*`, резолвящий tenant
+по Host. Для дашборда это не подходит (один домен, несколько заведений
+у одного владельца), поэтому был добавлен параллельный набор роутов:
+
+- **`src/admin/tenant-context.ts`** — `resolveAdminTenant` middleware,
+  аналог `tenantResolver` (Фаза 2), но резолвит tenant по заголовку
+  `X-Tenant-Id` вместо Host, с проверкой владения через `ownerId` из JWT
+- **`src/admin/catalog.ts`** — `/admin/catalog/categories`,
+  `/admin/catalog/products`, `/admin/catalog/orders`,
+  `/admin/catalog/media/upload` — переиспользуют те же репозитории
+  (`CategoriesRepository`, `ProductsRepository`, `OrdersRepository`,
+  `MediaService`) и ту же бизнес-логику лимитов, что и публичные роуты —
+  никакой логики не задублировано, только способ резолвинга tenant другой
+
+### Запуск локально
+
+```bash
+cd dashboard
+npm install
+npm run dev        # http://localhost:5174
+npm run build       # dist/ — статические файлы для Cloudflare Pages
+```
+
+### Деплой: Cloudflare Pages (аналогично `storefront/` и `landing/`)
+
+Отдельный Pages-проект, тот же Worker backend, что и у остальных частей:
+
+- **Framework preset**: None
+- **Build command**: `cd dashboard && npm install && npm run build`
+- **Build output directory**: `dashboard/dist`
+
+Дашборд обращается к API относительными путями (`/auth/*`, `/admin/*`) —
+если Pages-проект дашборда на другом домене, чем Worker, либо настройте
+`window.KIOSK_API_BASE` перед загрузкой `main.tsx` (см. `src/lib/api.ts`),
+либо настройте `routes` в `wrangler.toml`, чтобы Worker и дашборд жили на
+одном домене (как это сделано для `storefront/`).
+
+### Известные ограничения дашборда
+
+- **Нет `GET /auth/me`** на бэкенде — при загрузке дашборд не может
+  проверить валидность сохранённого токена независимо от реального
+  запроса; невалидный токен обнаруживается только при первом
+  API-вызове (см. `src/lib/auth.tsx`), который получит 401 и
+  редиректнет на `/login`.
+- **Live-заказы через polling**, не WebSocket/SSE — интервал 8 секунд,
+  этого достаточно для звукового сигнала без нагрузки на Workers от
+  долгоживущих соединений. При реальном масштабировании стоит
+  рассмотреть Server-Sent Events или Durable Objects WebSocket, если
+  задержка в 8 секунд станет ощутимой.
+- **Пароли Telegram-бота вводятся заново при каждом изменении настроек
+  уведомлений** — бэкенд не может вернуть расшифрованный токен на
+  фронтенд (это было бы утечкой секрета), так что поле всегда пустое
+  при повторном открытии; placeholder явно объясняет это пользователю.

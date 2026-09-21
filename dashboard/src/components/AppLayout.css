@@ -1,0 +1,40 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-content {
+  flex: 1;
+  padding: 32px 40px;
+  max-width: 64rem;
+}
+
+@media (max-width: 900px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex: 0;
+  }
+
+  .sidebar-footer {
+    border-top: none;
+    margin-top: 0;
+    margin-left: auto;
+  }
+
+  .app-content {
+    padding: 20px;
+  }
+}

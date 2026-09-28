@@ -263,11 +263,11 @@
 <script>
   /**
    * The API base is relative — this page is expected to be served
-   * from the same domain as the Worker (see wrangler.toml routes),
-   * matching the same convention the storefront frontend uses.
-   * If this page is hosted on a separate Pages project instead,
-   * set window.KIOSK_API_BASE before this script runs, e.g.
-   * <script>window.KIOSK_API_BASE = "https://api.yourdomain.com"</script>
+   * from the same domain as the Worker, matching the convention the
+   * storefront frontend uses. If this page is hosted on a separate
+   * Pages project instead, set window.KIOSK_API_BASE (e.g. to
+   * "https://api.yourdomain.com") in a separate script tag placed
+   * before this one.
    */
   const API_BASE = window.KIOSK_API_BASE || "";
 
